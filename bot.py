@@ -61,7 +61,7 @@ async def handle_voice(message: Message):
         await openai_client.text_to_speech(response, response_audio_path)
         
         # Отправляем голосовое сообщение с ответом
-        audio_file = InputFile(response_audio_path)
+        audio_file = InputFile(response_audio_path, filename="response.mp3")
         await message.answer_voice(audio_file)
             
     except Exception as e:
