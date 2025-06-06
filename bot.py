@@ -3,7 +3,7 @@ import logging
 import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, InputFile
 from config import settings
 from openai_client import OpenAIClient
 
@@ -61,8 +61,8 @@ async def handle_voice(message: Message):
         await openai_client.text_to_speech(response, response_audio_path)
         
         # Отправляем голосовое сообщение с ответом
-        with open(response_audio_path, "rb") as audio:
-            await message.answer_voice(audio)
+        audio_file = InputFile(response_audio_path)
+        await message.answer_voice(audio_file)
             
     except Exception as e:
         logging.error(f"Error processing voice message: {e}")
