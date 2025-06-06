@@ -88,7 +88,8 @@ async def handle_voice(message: types.Message):
         logger.info(f"Assistant response: {response}")
         
         # Convert response to speech
-        response_audio_path = await openai_client.text_to_speech(response)
+        response_audio_path = f"temp/response_{file_id}.mp3"
+        await openai_client.text_to_speech(response, response_audio_path)
         
         # Отправляем голосовое сообщение с ответом
         with open(response_audio_path, "rb") as audio:
@@ -106,7 +107,7 @@ async def handle_voice(message: types.Message):
         # Cleanup
         if os.path.exists(local_path):
             os.remove(local_path)
-        if os.path.exists(response_audio_path):
+        if 'response_audio_path' in locals() and os.path.exists(response_audio_path):
             os.remove(response_audio_path)
 
 async def send_voice_message(message: types.Message, text: str, voice_path: str):
