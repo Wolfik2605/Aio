@@ -64,51 +64,65 @@ async def cmd_start(message: Message):
 
 # Обработчик голосовых сообщений
 @dp.message()
-async def handle_voice(message: Message):
-    voice_path = None
-    response_audio_path = None
-    
-    if not message.voice:
-        await message.answer("Пожалуйста, отправьте голосовое сообщение!")
-        return
-    
+async def handle_voice(message: types.Message):
+    """Handle voice messages"""
     try:
-        # Отправляем статус "печатает..."
-        await message.answer("🎤 Обрабатываю ваше голосовое сообщение...")
+        # Download voice message
+        file_id = message.voice.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
         
-        # Скачиваем голосовое сообщение
-        voice_file = await bot.get_file(message.voice.file_id)
-        voice_path = os.path.join(TEMP_DIR, f"voice_{message.message_id}.ogg")
-        await bot.download_file(voice_file.file_path, voice_path)
+        # Create temp directory if it doesn't exist
+        os.makedirs("temp", exist_ok=True)
         
-        # Транскрибируем голос в текст
-        text = await openai_client.transcribe_audio(voice_path)
-        await message.answer(f"🎯 Распознанный текст: {text}")
+        # Download file
+        local_path = f"temp/{file_id}.ogg"
+        await bot.download_file(file_path, local_path)
         
-        # Получаем ответ от ассистента
+        # Convert to text using Whisper
+        text = await openai_client.transcribe_audio(local_path)
+        logger.info(f"Transcribed text: {text}")
+        
+        # Get response from OpenAI
         response = await openai_client.get_assistant_response(text)
-        await message.answer(f"🤖 Ответ: {response}")
+        logger.info(f"Assistant response: {response}")
         
-        # Преобразуем ответ в речь
-        response_audio_path = os.path.join(TEMP_DIR, f"response_{message.message_id}.mp3")
-        await openai_client.text_to_speech(response, response_audio_path)
+        # Convert response to speech
+        response_audio_path = await openai_client.text_to_speech(response)
         
         # Отправляем голосовое сообщение с ответом
         with open(response_audio_path, "rb") as audio:
+            # Ограничиваем длину описания до 1024 символов
+            caption = response[:1024] if len(response) > 1024 else response
             await message.answer_voice(
                 voice=types.FSInputFile(response_audio_path),
-                caption=response
+                caption=caption
             )
             
     except Exception as e:
-        logging.error(f"Error processing voice message: {e}")
-        await message.answer("😔 Произошла ошибка при обработке сообщения. Попробуйте еще раз.")
-    
+        logger.error(f"Error processing voice message: {e}")
+        await message.answer("Произошла ошибка при обработке голосового сообщения. Попробуйте еще раз.")
     finally:
-        # Удаляем временные файлы
-        for file_path in [voice_path, response_audio_path]:
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
+        # Cleanup
+        if os.path.exists(local_path):
+            os.remove(local_path)
+        if os.path.exists(response_audio_path):
+            os.remove(response_audio_path)
+
+async def send_voice_message(message: types.Message, text: str, voice_path: str):
+    """Send voice message with text caption"""
+    try:
+        # Limit caption length to 1024 characters (Telegram's limit)
+        caption = text[:1024] if len(text) > 1024 else text
+        
+        with open(voice_path, 'rb') as voice:
+            await message.answer_voice(
+                voice=types.FSInputFile(voice_path),
+                caption=caption
+            )
+    except Exception as e:
+        logger.error(f"Error sending voice message: {e}")
+        await message.answer("Виникла помилка при відправці голосового повідомлення. Спробуйте ще раз.")
 
 async def send_voice_response(message: types.Message, text: str):
     """Send voice response using OpenAI TTS"""
