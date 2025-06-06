@@ -1,6 +1,7 @@
 import os
 from openai import AsyncOpenAI
 from config import settings
+import asyncio
 
 class OpenAIClient:
     def __init__(self):

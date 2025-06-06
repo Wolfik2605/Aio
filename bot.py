@@ -32,6 +32,9 @@ async def cmd_start(message: Message):
 # Обработчик голосовых сообщений
 @dp.message()
 async def handle_voice(message: Message):
+    voice_path = None
+    response_audio_path = None
+    
     if not message.voice:
         await message.answer("Пожалуйста, отправьте голосовое сообщение!")
         return
@@ -68,7 +71,7 @@ async def handle_voice(message: Message):
     finally:
         # Удаляем временные файлы
         for file_path in [voice_path, response_audio_path]:
-            if os.path.exists(file_path):
+            if file_path and os.path.exists(file_path):
                 os.remove(file_path)
 
 async def main():
