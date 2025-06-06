@@ -62,7 +62,10 @@ async def handle_voice(message: Message):
         
         # Отправляем голосовое сообщение с ответом
         with open(response_audio_path, "rb") as audio:
-            await message.answer_voice(InputFile(audio))
+            await message.answer_voice(
+                voice=types.FSInputFile(response_audio_path),
+                caption=response
+            )
             
     except Exception as e:
         logging.error(f"Error processing voice message: {e}")
