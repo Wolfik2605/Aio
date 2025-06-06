@@ -61,8 +61,8 @@ async def handle_voice(message: Message):
         await openai_client.text_to_speech(response, response_audio_path)
         
         # Отправляем голосовое сообщение с ответом
-        audio_file = InputFile.from_file(response_audio_path)
-        await message.answer_voice(audio_file)
+        with open(response_audio_path, "rb") as audio:
+            await message.answer_voice(InputFile(audio))
             
     except Exception as e:
         logging.error(f"Error processing voice message: {e}")
@@ -73,6 +73,35 @@ async def handle_voice(message: Message):
         for file_path in [voice_path, response_audio_path]:
             if file_path and os.path.exists(file_path):
                 os.remove(file_path)
+
+async def send_voice_response(message: types.Message, text: str):
+    """Send voice response using OpenAI TTS"""
+    try:
+        # Generate speech
+        response = openai_client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=text
+        )
+        
+        # Save to temporary file
+        temp_file = "temp_response.mp3"
+        with open(temp_file, "wb") as f:
+            f.write(response.content)
+        
+        # Send voice message
+        with open(temp_file, "rb") as voice:
+            await message.reply_voice(
+                voice=types.InputFile(voice),
+                caption=text
+            )
+        
+        # Clean up
+        os.remove(temp_file)
+        
+    except Exception as e:
+        logging.error(f"Error sending voice response: {str(e)}")
+        await message.reply("Извините, произошла ошибка при отправке голосового сообщения.")
 
 async def main():
     # Запуск бота
